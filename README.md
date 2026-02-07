@@ -34,17 +34,17 @@ In short:
 ## Feature Checklist
 
 | Capability | Standalone agents | Traditional + MCP | SceneSight |
-|---|-------------------|---|---|
-| Natural-language tasking | Yes               | Yes | Yes |
-| File read/search tooling | Yes               | Yes | Yes |
-| Scene graph tooling (list/create/update/delete) | No                | Yes | Yes |
-| Component introspection/edit tooling | No                | Yes | Yes |
-| Snapshot capture integrated in agent loop | No                | Optional/manual | Yes |
-| Target-focused visual capture (`selected_assets`) | No                | Rare | Yes |
-| Visual verification as completion requirement | No                | Usually no | Yes |
-| Automatic re-steering after visual mismatch | No                | Limited | Yes |
-| Reduced babysitting for scene correctness | No                | Partial | Yes |
-| Plan mode with scene/file inspection | N/A               | Varies | Yes |
+|---|---|---|---|
+| 🤖 Natural-language tasking | ✅ | ✅ | ✅ |
+| 📁 File read/search tooling | ✅ | ✅ | ✅ |
+| 🧱 Scene graph tooling (list/create/update/delete) | ❌ | ✅ | ✅ |
+| 🧩 Component introspection/edit tooling | ❌ | ✅ | ✅ |
+| 📸 Snapshot capture integrated in agent loop | ❌ | 🟡 Optional | ✅ |
+| 🎯 Target-focused visual capture (`selected_assets`) | ❌ | 🟡 Rare | ✅ |
+| ✅ Visual verification required before completion | ❌ | ❌ | ✅ |
+| 🔁 Automatic re-steering after visual mismatch | ❌ | 🟡 Limited | ✅ |
+| 🧑‍💻 Reduced babysitting for scene correctness | ❌ | 🟡 Partial | ✅ |
+| 🗺️ Plan mode with scene/file inspection | ⚪ N/A | 🟡 Varies | ✅ |
 
 ## What Is Included
 
