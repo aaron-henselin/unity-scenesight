@@ -1,4 +1,4 @@
-# Vision-Enabled Copilot for Unity
+# SceneSight: A Vision-Enabled Copilot for Unity
 
 This repository brings vision-enabled Copilot workflows into Unity Editor development.
 
