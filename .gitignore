@@ -1,0 +1,56 @@
+# Unity generated folders
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Ll]ogs/
+[Uu]ser[Ss]ettings/
+[Mm]emoryCaptures/
+[Rr]ecordings/
+
+# Addressables / asset pipeline caches
+Assets/AssetStoreTools*
+Assets/StreamingAssets/aa.meta
+Assets/StreamingAssets/aa/*
+
+# Auto-generated project files
+*.csproj
+*.unityproj
+*.sln
+*.suo
+*.tmp
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+*.pidb.meta
+*.pdb.meta
+*.mdb.meta
+
+# Unity package build output (inside this repo)
+Assets/UnityCopilot/Editor/CopilotSdkHost~/bin/
+Assets/UnityCopilot/Editor/CopilotSdkHost~/obj/
+Assets/UnityCopilot/Editor/CopilotSdkHost~/publish/
+
+# Crash and diagnostics
+sysinfo.txt
+
+# OS / editor junk
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# IDE settings
+.idea/
+.vscode/
+
+# Copilot runtime attachments
+.copilot/attachments/
+

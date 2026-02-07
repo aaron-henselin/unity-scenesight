@@ -1,0 +1,25 @@
+﻿{
+  "name": "com.yourcompany.unitycopilot",
+  "version": "1.0.0",
+  "displayName": "Unity Copilot",
+  "description": "A Unity plugin that provides AI-powered development assistance and code generation capabilities.",
+  "unity": "2021.3",
+  "keywords": [
+    "copilot",
+    "ai",
+    "agent",
+    "assistant",
+    "code-generation",
+    "refactoring",
+    "editor",
+    "tools",
+    "productivity"
+  ],
+  "author": {
+    "name": "Your Company",
+    "url": "https://yourcompany.com"
+  },
+  "dependencies": {},
+  "type": "tool"
+}
+

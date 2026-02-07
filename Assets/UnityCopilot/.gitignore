@@ -1,0 +1,10 @@
+﻿# Unity Copilot Package .gitignore
+
+# Keep .meta files for Unity packages
+# Unity requires .meta files for proper asset tracking
+
+# Copilot SDK host build output
+Editor/CopilotSdkHost~/bin/
+Editor/CopilotSdkHost~/obj/
+Editor/CopilotSdkHost~/publish/
+
