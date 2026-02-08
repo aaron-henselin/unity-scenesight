@@ -677,17 +677,19 @@ namespace YourCompany.UnityCopilot.Editor
 
             if (!File.Exists(settings.HostExecutablePath))
             {
-                var defaultPath = GetDefaultHostPath();
-                if (File.Exists(defaultPath))
+                if (TryResolveHostExecutablePath(settings, out var resolvedPath))
                 {
-                    settings.HostExecutablePath = defaultPath;
-                    settings.Save();
+                    if (!string.Equals(settings.HostExecutablePath, resolvedPath, StringComparison.OrdinalIgnoreCase))
+                    {
+                        settings.HostExecutablePath = resolvedPath;
+                        settings.Save();
+                    }
                 }
             }
 
             if (!File.Exists(settings.HostExecutablePath))
             {
-                _error = "Copilot host executable was not found after build.";
+                _error = $"Copilot host executable was not found after build. Expected under '{GetPublishRoot()}'.";
                 _status = "Host failed to start.";
                 return false;
             }
@@ -745,6 +747,84 @@ namespace YourCompany.UnityCopilot.Editor
                 buildError = $"Failed to run build script: {ex.Message}";
                 return false;
             }
+        }
+
+        private static bool TryResolveHostExecutablePath(CopilotSdkSettings settings, out string resolvedPath)
+        {
+            resolvedPath = "";
+
+            if (settings != null && !string.IsNullOrWhiteSpace(settings.HostExecutablePath)
+                && File.Exists(settings.HostExecutablePath))
+            {
+                resolvedPath = settings.HostExecutablePath;
+                return true;
+            }
+
+            var defaultPath = GetDefaultHostPath();
+            if (File.Exists(defaultPath))
+            {
+                resolvedPath = defaultPath;
+                return true;
+            }
+
+            var publishRoot = GetPublishRoot();
+            if (!Directory.Exists(publishRoot))
+            {
+                return false;
+            }
+
+            var exeNames = Application.platform == RuntimePlatform.WindowsEditor
+                ? new[] { "CopilotSdkHost.exe", "CopilotSdkHost" }
+                : new[] { "CopilotSdkHost" };
+            var preferredRids = GetPreferredPublishRids();
+            foreach (var rid in preferredRids)
+            {
+                foreach (var exeName in exeNames)
+                {
+                    var candidate = Path.Combine(publishRoot, rid, exeName);
+                    if (File.Exists(candidate))
+                    {
+                        resolvedPath = candidate;
+                        return true;
+                    }
+                }
+            }
+
+            foreach (var exeName in exeNames)
+            {
+                var candidates = Directory.EnumerateFiles(publishRoot, exeName, SearchOption.AllDirectories);
+                foreach (var candidate in candidates)
+                {
+                    if (File.Exists(candidate))
+                    {
+                        resolvedPath = candidate;
+                        return true;
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        private static string GetPublishRoot()
+        {
+            return Path.Combine(
+                Application.dataPath,
+                "UnityCopilot",
+                "Editor",
+                "CopilotSdkHost~",
+                "publish");
+        }
+
+        private static string[] GetPreferredPublishRids()
+        {
+            return Application.platform switch
+            {
+                RuntimePlatform.WindowsEditor => new[] { "win-x64", "win-arm64", "win-x86" },
+                RuntimePlatform.OSXEditor => new[] { "osx-arm64", "osx-x64" },
+                RuntimePlatform.LinuxEditor => new[] { "linux-x64", "linux-arm64" },
+                _ => new[] { "win-x64" }
+            };
         }
 
         private async Task StopSessionAsync()
