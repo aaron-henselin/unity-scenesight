@@ -9,8 +9,21 @@ breaking Unity's managed runtime.
 From this folder:
 
 ```powershell
-dotnet restore
-dotnet publish -c Release -r win-x64 --self-contained true -o publish/win-x64
+dotnet restore CopilotSdkHost.csproj
+dotnet publish CopilotSdkHost.csproj -c Release -r win-x64 --self-contained true -o publish/win-x64
+```
+
+Single-invocation script usage:
+
+```powershell
+# Default (Windows only)
+./build.ps1
+
+# Windows + macOS targets in one run
+./build.ps1 -Runtimes win-x64,osx-x64,osx-arm64
+
+# All supported targets (win + mac + linux)
+./build.ps1 -AllRuntimes
 ```
 
 The Unity editor window expects the executable at:
@@ -24,9 +37,9 @@ Assets/UnityCopilot/Editor/CopilotSdkHost~/publish/win-x64/CopilotSdkHost.exe
 You can publish additional runtimes alongside `win-x64`:
 
 ```powershell
-dotnet publish -c Release -r osx-x64 --self-contained true -o publish/osx-x64
-dotnet publish -c Release -r osx-arm64 --self-contained true -o publish/osx-arm64
-dotnet publish -c Release -r linux-x64 --self-contained true -o publish/linux-x64
+dotnet publish CopilotSdkHost.csproj -c Release -r osx-x64 --self-contained true -o publish/osx-x64
+dotnet publish CopilotSdkHost.csproj -c Release -r osx-arm64 --self-contained true -o publish/osx-arm64
+dotnet publish CopilotSdkHost.csproj -c Release -r linux-x64 --self-contained true -o publish/linux-x64
 ```
 
 Unity will choose the matching runtime automatically when you click

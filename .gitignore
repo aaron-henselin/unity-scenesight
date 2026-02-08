@@ -54,3 +54,6 @@ Desktop.ini
 # Copilot runtime attachments
 .copilot/attachments/
 
+# Exported chat history
+ChatExports/
+

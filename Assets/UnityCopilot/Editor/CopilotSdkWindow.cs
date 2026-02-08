@@ -287,6 +287,10 @@ namespace YourCompany.UnityCopilot.Editor
             {
                 EditorGUILayout.LabelField("Conversation", EditorStyles.boldLabel);
                 GUILayout.FlexibleSpace();
+                if (GUILayout.Button("Export Chat", GUILayout.Width(90)))
+                {
+                    ExportConversationToMarkdown();
+                }
                 if (GUILayout.Button("New Chat", GUILayout.Width(90)))
                 {
                     _ = StartNewChatAsync();
@@ -297,7 +301,7 @@ namespace YourCompany.UnityCopilot.Editor
             {
                 _scroll.y = float.MaxValue;
             }
-            _scroll = EditorGUILayout.BeginScrollView(_scroll, GUILayout.Height(240));
+            _scroll = EditorGUILayout.BeginScrollView(_scroll, GUILayout.ExpandHeight(true));
 
             if (!string.IsNullOrWhiteSpace(_thinking))
             {
@@ -587,17 +591,19 @@ namespace YourCompany.UnityCopilot.Editor
                 if (string.IsNullOrWhiteSpace(settings.HostExecutablePath))
                 {
                     var defaultPath = GetDefaultHostPath();
-                    if (File.Exists(defaultPath))
-                    {
-                        settings.HostExecutablePath = defaultPath;
-                        settings.Save();
-                    }
+                    settings.HostExecutablePath = defaultPath;
+                    settings.Save();
                 }
 
                 if (string.IsNullOrWhiteSpace(settings.RepoRoot))
                 {
                     settings.RepoRoot = GetProjectRoot();
                     settings.Save();
+                }
+
+                if (!await EnsureHostExecutableAsync(settings))
+                {
+                    return;
                 }
 
                 await _client.StartAsync(settings);
@@ -615,6 +621,129 @@ namespace YourCompany.UnityCopilot.Editor
             {
                 _isStarting = false;
                 Repaint();
+            }
+        }
+
+        private async Task<bool> EnsureHostExecutableAsync(CopilotSdkSettings settings)
+        {
+            if (settings == null || string.IsNullOrWhiteSpace(settings.HostExecutablePath))
+            {
+                _error = "Host executable path is not configured.";
+                _status = "Host failed to start.";
+                return false;
+            }
+
+            if (File.Exists(settings.HostExecutablePath))
+            {
+                return true;
+            }
+
+            var repoRoot = string.IsNullOrWhiteSpace(settings.RepoRoot) || !Directory.Exists(settings.RepoRoot)
+                ? GetProjectRoot()
+                : settings.RepoRoot;
+            var buildScript = Path.Combine(repoRoot, "build.ps1");
+            if (!File.Exists(buildScript))
+            {
+                _error = $"Copilot host executable was not found and build script is missing at '{buildScript}'.";
+                _status = "Host build script missing.";
+                return false;
+            }
+
+            _status = "Host executable missing. Building...";
+            PersistSessionState();
+            Repaint();
+
+            var stdout = "";
+            var stderr = "";
+            var buildError = "";
+            var buildSucceeded = await Task.Run(() =>
+                RunBuildScript(buildScript, repoRoot, out stdout, out stderr, out buildError));
+            if (!buildSucceeded)
+            {
+                _error = string.IsNullOrWhiteSpace(buildError)
+                    ? "Copilot host build failed. See console for details."
+                    : buildError;
+                _status = "Host build failed.";
+                if (!string.IsNullOrWhiteSpace(stdout))
+                {
+                    Debug.Log(stdout);
+                }
+                if (!string.IsNullOrWhiteSpace(stderr))
+                {
+                    Debug.LogError(stderr);
+                }
+                return false;
+            }
+
+            if (!File.Exists(settings.HostExecutablePath))
+            {
+                var defaultPath = GetDefaultHostPath();
+                if (File.Exists(defaultPath))
+                {
+                    settings.HostExecutablePath = defaultPath;
+                    settings.Save();
+                }
+            }
+
+            if (!File.Exists(settings.HostExecutablePath))
+            {
+                _error = "Copilot host executable was not found after build.";
+                _status = "Host failed to start.";
+                return false;
+            }
+
+            return true;
+        }
+
+        private static bool RunBuildScript(
+            string scriptPath,
+            string workingDirectory,
+            out string stdout,
+            out string stderr,
+            out string buildError)
+        {
+            var isWindows = Application.platform == RuntimePlatform.WindowsEditor;
+            var shell = isWindows ? "powershell" : "pwsh";
+            var args = isWindows
+                ? $"-NoProfile -ExecutionPolicy Bypass -File \"{scriptPath}\""
+                : $"-NoProfile -File \"{scriptPath}\"";
+
+            var startInfo = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = shell,
+                Arguments = args,
+                WorkingDirectory = workingDirectory,
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true
+            };
+
+            try
+            {
+                using var process = System.Diagnostics.Process.Start(startInfo);
+                if (process == null)
+                {
+                    stdout = "";
+                    stderr = "";
+                    buildError = "Failed to start the build process.";
+                    return false;
+                }
+
+                var stdoutTask = process.StandardOutput.ReadToEndAsync();
+                var stderrTask = process.StandardError.ReadToEndAsync();
+                process.WaitForExit();
+                stdout = stdoutTask.GetAwaiter().GetResult();
+                stderr = stderrTask.GetAwaiter().GetResult();
+                buildError = "";
+                return process.ExitCode == 0;
+            }
+            catch (Exception ex)
+            {
+                stdout = "";
+                stderr = "";
+                buildError = $"Failed to run build script: {ex.Message}";
+                return false;
             }
         }
 
@@ -1037,6 +1166,170 @@ namespace YourCompany.UnityCopilot.Editor
             ClearAttachedSnapshot();
             RequestScrollToBottom();
             PersistSessionState();
+        }
+
+        private void ExportConversationToMarkdown()
+        {
+            if (_messages.Count == 0)
+            {
+                EditorUtility.DisplayDialog("Export Chat", "No messages to export.", "OK");
+                return;
+            }
+
+            var defaultName = $"CopilotChat_{DateTime.Now:yyyy-MM-dd_HHmmss}.md";
+            var exportDir = GetExportDirectory();
+            var path = EditorUtility.SaveFilePanel("Export Chat to Markdown", exportDir, defaultName, "md");
+
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                return;
+            }
+
+            try
+            {
+                var settings = CopilotSdkSettings.Get();
+                var sb = new StringBuilder();
+                var exportRoot = Path.GetDirectoryName(path) ?? exportDir;
+                var imageDirName = $"{Path.GetFileNameWithoutExtension(path)}_images";
+                var imageDir = Path.Combine(exportRoot, imageDirName);
+                var imageIndex = 0;
+                void AppendSnapshotImage(string base64)
+                {
+                    if (string.IsNullOrWhiteSpace(base64))
+                    {
+                        return;
+                    }
+
+                    imageIndex++;
+                    if (!Directory.Exists(imageDir))
+                    {
+                        Directory.CreateDirectory(imageDir);
+                    }
+
+                    var imageFileName = $"snapshot_{imageIndex:000}.png";
+                    var imagePath = Path.Combine(imageDir, imageFileName);
+                    if (TryWriteBase64Image(base64, imagePath, out var imageError))
+                    {
+                        var relativePath = Path.GetRelativePath(exportRoot, imagePath)
+                            .Replace("\\", "/");
+                        sb.AppendLine($"![Snapshot {imageIndex}]({relativePath})");
+                    }
+                    else
+                    {
+                        Debug.LogWarning($"Failed to export snapshot image: {imageError}");
+                        sb.AppendLine("![Snapshot](image export failed)");
+                    }
+                    sb.AppendLine();
+                }
+                sb.AppendLine("# Copilot Chat Export");
+                sb.AppendLine();
+                sb.AppendLine($"**Date:** {DateTime.Now:yyyy-MM-dd HH:mm:ss}  ");
+                sb.AppendLine($"**Model:** {settings.Model}  ");
+                sb.AppendLine($"**Mode:** {settings.InteractionMode}  ");
+                sb.AppendLine();
+                sb.AppendLine("---");
+                sb.AppendLine();
+
+                foreach (var message in _messages)
+                {
+                    if (message.IsToolCall)
+                    {
+                        sb.AppendLine($"### 🔧 Tool: {message.ToolName}");
+                        sb.AppendLine();
+                        AppendSnapshotImage(message.ImageBase64);
+                        sb.AppendLine("<details>");
+                        sb.AppendLine("<summary>Tool Details</summary>");
+                        sb.AppendLine();
+                        if (!string.IsNullOrWhiteSpace(message.ToolPayload))
+                        {
+                            sb.AppendLine("**Input:**");
+                            sb.AppendLine("```json");
+                            sb.AppendLine(message.ToolPayload);
+                            sb.AppendLine("```");
+                            sb.AppendLine();
+                        }
+                        if (!string.IsNullOrWhiteSpace(message.ToolResultPayload))
+                        {
+                            sb.AppendLine("**Result:**");
+                            sb.AppendLine("```json");
+                            sb.AppendLine(message.ToolResultPayload);
+                            sb.AppendLine("```");
+                        }
+                        sb.AppendLine();
+                        sb.AppendLine("</details>");
+                        sb.AppendLine();
+                    }
+                    else
+                    {
+                        var roleEmoji = string.Equals(message.Role, "You", StringComparison.OrdinalIgnoreCase) ? "👤" : "🤖";
+                        sb.AppendLine($"## {roleEmoji} {message.Role}");
+                        sb.AppendLine();
+
+                        AppendSnapshotImage(message.ImageBase64);
+
+                        if (!string.IsNullOrWhiteSpace(message.Content))
+                        {
+                            sb.AppendLine(message.Content);
+                            sb.AppendLine();
+                        }
+                    }
+
+                    sb.AppendLine("---");
+                    sb.AppendLine();
+                }
+
+                File.WriteAllText(path, sb.ToString(), Encoding.UTF8);
+                _status = $"Chat exported to {Path.GetFileName(path)}";
+
+                if (EditorUtility.DisplayDialog("Export Complete", $"Chat exported to:\n{path}\n\nOpen containing folder?", "Open Folder", "Close"))
+                {
+                    EditorUtility.RevealInFinder(path);
+                }
+            }
+            catch (Exception ex)
+            {
+                _error = $"Export failed: {ex.Message}";
+                Debug.LogException(ex);
+            }
+        }
+
+        private static bool TryWriteBase64Image(string base64, string path, out string error)
+        {
+            if (string.IsNullOrWhiteSpace(base64))
+            {
+                error = "No image data provided.";
+                return false;
+            }
+
+            var trimmed = base64.Trim();
+            var markerIndex = trimmed.IndexOf("base64,", StringComparison.OrdinalIgnoreCase);
+            if (markerIndex >= 0)
+            {
+                trimmed = trimmed.Substring(markerIndex + "base64,".Length);
+            }
+
+            try
+            {
+                var bytes = Convert.FromBase64String(trimmed);
+                File.WriteAllBytes(path, bytes);
+                error = "";
+                return true;
+            }
+            catch (Exception ex)
+            {
+                error = ex.Message;
+                return false;
+            }
+        }
+
+        private static string GetExportDirectory()
+        {
+            var exportDir = Path.Combine(Application.dataPath, "..", "ChatExports");
+            if (!Directory.Exists(exportDir))
+            {
+                Directory.CreateDirectory(exportDir);
+            }
+            return Path.GetFullPath(exportDir);
         }
 
         private void HandleBeforeAssemblyReload()
@@ -1755,5 +2048,3 @@ namespace YourCompany.UnityCopilot.Editor
         }
     }
 }
-
-

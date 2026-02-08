@@ -90,8 +90,14 @@ From `Assets/UnityCopilot/Editor/CopilotSdkHost~`:
 `build.ps1` runs:
 
 ```powershell
-dotnet restore
-dotnet publish -c Release -r win-x64 --self-contained true -o publish/win-x64
+dotnet restore CopilotSdkHost.csproj
+dotnet publish CopilotSdkHost.csproj -c Release -r win-x64 --self-contained true -o publish/win-x64
+```
+
+Build Windows + macOS in one invocation:
+
+```powershell
+./build.ps1 -Runtimes win-x64,osx-x64,osx-arm64
 ```
 
 Expected output executable:
