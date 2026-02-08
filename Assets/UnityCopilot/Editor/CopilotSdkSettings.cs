@@ -15,7 +15,7 @@ namespace YourCompany.UnityCopilot.Editor
         public string InteractionMode = "ask";
         public int TimeoutSeconds = 180;
         public bool ToolDebug = false;
-        public string Model = "gpt-4.1";
+        public string Model = "claude-haiku-4.5";
         public bool Streaming = true;
         public bool RenderMarkdown = true;
         public int SnapshotMaxWidth = 1024;

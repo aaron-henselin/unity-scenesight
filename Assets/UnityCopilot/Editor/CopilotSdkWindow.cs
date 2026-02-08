@@ -649,15 +649,27 @@ namespace YourCompany.UnityCopilot.Editor
                 return false;
             }
 
-            _status = "Host executable missing. Building...";
+            _status = "Host executable missing. Running build.ps1 (this may take a minute)...";
             PersistSessionState();
             Repaint();
 
             var stdout = "";
             var stderr = "";
             var buildError = "";
-            var buildSucceeded = await Task.Run(() =>
-                RunBuildScript(buildScript, repoRoot, out stdout, out stderr, out buildError));
+            var buildSucceeded = false;
+            try
+            {
+                EditorUtility.DisplayProgressBar(
+                    "Building Copilot Host",
+                    "Running build.ps1 (this may take a minute)...",
+                    0.1f);
+                buildSucceeded = await Task.Run(() =>
+                    RunBuildScript(buildScript, repoRoot, out stdout, out stderr, out buildError));
+            }
+            finally
+            {
+                EditorUtility.ClearProgressBar();
+            }
             if (!buildSucceeded)
             {
                 _error = string.IsNullOrWhiteSpace(buildError)
