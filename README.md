@@ -52,8 +52,8 @@ In short:
 - External .NET host process (`CopilotSdkHost`) that runs the Copilot SDK.
 - Unity scene tools (list/create/update/delete objects, component tools, snapshots).
 - Snapshot capture modes:
-  - `whole_scene`
-  - `selected_assets`
+    - `whole_scene`
+    - `selected_assets`
 - Primitive-aware object creation for `create_game_object` and `add_game_object`.
 
 ## Prerequisites
@@ -69,36 +69,13 @@ In short:
 For this Unity integration, the host is .NET-based, so install:
 
 1. GitHub Copilot CLI (install + auth):
-   - https://docs.github.com/en/copilot/how-tos/set-up/install-copilot-cli
-2. .NET package used by this host:
-   - `dotnet add package GitHub.Copilot.SDK`
+    - https://docs.github.com/en/copilot/how-tos/set-up/install-copilot-cli
 
-Optional references for other runtimes are documented in:
 
-- `Assets/UnityCopilot/Documentation~/github-copilot-getting-started.md`
 
 ## Installation and Run
 
-### 1. Build the Copilot host executable
-
-From `Assets/UnityCopilot/Editor/CopilotSdkHost~`:
-
-```powershell
-./build.ps1
-```
-
-`build.ps1` runs:
-
-```powershell
-dotnet restore CopilotSdkHost.csproj
-dotnet publish CopilotSdkHost.csproj -c Release -r win-x64 --self-contained true -o publish/win-x64
-```
-
-Build Windows + macOS in one invocation:
-
-```powershell
-./build.ps1 -Runtimes win-x64,osx-x64,osx-arm64
-```
+### 1. Build the Copilot host executable via `build.ps1`. If you skip this step, there will be a slightly longer "cold boot" as the script will be run on first agent request.
 
 Expected output executable:
 
@@ -120,7 +97,7 @@ In the Copilot window Settings:
 
 - Click `Use Default Host Path`, or
 - set `Host Path` manually to:
-  - `Assets/UnityCopilot/Editor/CopilotSdkHost~/publish/win-x64/CopilotSdkHost.exe`
+    - `Assets/UnityCopilot/Editor/CopilotSdkHost~/publish/win-x64/CopilotSdkHost.exe`
 
 Optional:
 
@@ -158,18 +135,18 @@ Use `capture_scene_snapshot` with:
 - `focusMode: "whole_scene"` for broad context
 - `focusMode: "selected_assets"` for target-focused verification
 
-Snapshots are shown as image bubbles in chat history and can be expanded.
+
 
 ## Common Issues
 
 - Host does not start:
-  - rebuild host via `./build.ps1`
-  - confirm `Host Path` points to the published executable
+    - rebuild host via `./build.ps1`
+    - confirm `Host Path` points to the published executable
 - Agent seems in wrong mode:
-  - switch mode in UI and ensure host restarts with the selected mode
-  - check status line for reported mode
+    - switch mode in UI and ensure host restarts with the selected mode
+    - check status line for reported mode
 - Plan mode cannot mutate:
-  - expected behavior; switch to `agent` to execute changes
+    - expected behavior; switch to `agent` to execute changes
 
 ## Key Paths
 
