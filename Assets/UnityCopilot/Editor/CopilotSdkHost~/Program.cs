@@ -513,7 +513,7 @@ internal sealed class CopilotHost : IAsyncDisposable
     {
         await HandleStopAsync();
 
-        var model = string.IsNullOrWhiteSpace(request.Model) ? "claude-haiku-4.5" : request.Model;
+        var model = string.IsNullOrWhiteSpace(request.Model) ? "claude-opus-4.5" : request.Model;
         _interactionMode = NormalizeMode(request.Mode);
         _streaming = request.Streaming;
         _prefixSent = false;

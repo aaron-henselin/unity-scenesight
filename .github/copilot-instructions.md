@@ -19,6 +19,7 @@ When fixing an issue that presents visually (UI layout, object positioning, rend
 3. **After**: Call `capture_scene_snapshot` again to verify the issue is resolved.
    Keep `focusMode: "selected_assets"` for targeted verification; optionally add one `whole_scene` snapshot for context.
 4. Report both before/after states in your response so the user can confirm the improvement
+5. **Iterate**: If the after snapshot is not satisfactory, continue adjusting and capturing new snapshots until the result looks correct. Do not stop after a single pass or claim completion until the visual outcome looks right.
 
 ### Scene Building & Asset Placement
 When placing assets, building scenes, or creating visual layouts:
