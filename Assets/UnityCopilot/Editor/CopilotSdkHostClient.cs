@@ -67,28 +67,40 @@ namespace YourCompany.UnityCopilot.Editor
 
             var startInfo = BuildStartInfo(settings);
             _process = new Process { StartInfo = startInfo, EnableRaisingEvents = true };
-            _process.Start();
-
-            _stdin = _process.StandardInput;
-            _cts = new CancellationTokenSource();
-
-            _stdoutTask = Task.Run(() => ReadStdoutAsync(_cts.Token));
-            _stderrTask = Task.Run(() => ReadStderrAsync(_cts.Token));
-
-            await SendAsync(new CopilotSdkHostRequest
+            try
             {
-                type = "start",
-                model = settings.Model,
-                streaming = settings.Streaming,
-                cliUrl = settings.CliUrl,
-                repoRoot = settings.RepoRoot,
-                excludedPaths = settings.ExcludedPaths,
-                maxFileSizeKb = settings.MaxFileSizeKb,
-                maxSearchResults = settings.MaxSearchResults,
-                mode = settings.InteractionMode,
-                timeoutSeconds = settings.TimeoutSeconds,
-                toolDebug = settings.ToolDebug
-            });
+                var started = _process.Start();
+                if (!started)
+                {
+                    throw new InvalidOperationException("Failed to start host process.");
+                }
+
+                _stdin = _process.StandardInput;
+                _cts = new CancellationTokenSource();
+
+                _stdoutTask = Task.Run(() => ReadStdoutAsync(_cts.Token));
+                _stderrTask = Task.Run(() => ReadStderrAsync(_cts.Token));
+
+                await SendAsync(new CopilotSdkHostRequest
+                {
+                    type = "start",
+                    model = settings.Model,
+                    streaming = settings.Streaming,
+                    cliUrl = settings.CliUrl,
+                    repoRoot = settings.RepoRoot,
+                    excludedPaths = settings.ExcludedPaths,
+                    maxFileSizeKb = settings.MaxFileSizeKb,
+                    maxSearchResults = settings.MaxSearchResults,
+                    mode = settings.InteractionMode,
+                    timeoutSeconds = settings.TimeoutSeconds,
+                    toolDebug = settings.ToolDebug
+                });
+            }
+            catch (Exception ex)
+            {
+                CleanupAfterFailedStart();
+                throw CreateFriendlyStartException(ex, settings.HostExecutablePath);
+            }
         }
 
         public Task SendPromptAsync(string prompt)
@@ -398,6 +410,55 @@ namespace YourCompany.UnityCopilot.Editor
                 CreateNoWindow = true,
                 WorkingDirectory = workingDirectory
             };
+        }
+
+        private void CleanupAfterFailedStart()
+        {
+            try
+            {
+                _cts?.Cancel();
+            }
+            catch
+            {
+                // Ignore cleanup errors.
+            }
+
+            try
+            {
+                _process?.Dispose();
+            }
+            catch
+            {
+                // Ignore cleanup errors.
+            }
+
+            _stdoutTask = null;
+            _stderrTask = null;
+            _stdin = null;
+            _cts = null;
+            _process = null;
+        }
+
+        private static Exception CreateFriendlyStartException(Exception ex, string hostExecutablePath)
+        {
+            if (string.IsNullOrWhiteSpace(hostExecutablePath) || !File.Exists(hostExecutablePath))
+            {
+                return new InvalidOperationException(
+                    "Copilot host executable was not found. Build it first by running "
+                    + "'Assets/UnityCopilot/Editor/CopilotSdkHost~/build.ps1', then set Host Path and start again.",
+                    ex);
+            }
+
+            if (ex is InvalidOperationException invalidOperation
+                && invalidOperation.Message.IndexOf("No process is associated with this object", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                return new InvalidOperationException(
+                    "Copilot host failed to launch. Rebuild the host with "
+                    + "'Assets/UnityCopilot/Editor/CopilotSdkHost~/build.ps1' and try Start Host again.",
+                    ex);
+            }
+
+            return ex;
         }
 
         private static bool IsToolLog(string message)
